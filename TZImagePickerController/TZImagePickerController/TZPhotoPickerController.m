@@ -97,9 +97,12 @@ CGFloat rowHeight = 70.0f;
     self.navigationItem.titleView = titleBtn;
     ///
     
-    
 //    self.navigationItem.title = _model.name;
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:tzImagePickerVc.cancelBtnTitleStr style:UIBarButtonItemStylePlain target:tzImagePickerVc action:@selector(cancelButtonClick)];
+//    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:tzImagePickerVc.cancelBtnTitleStr style:UIBarButtonItemStylePlain target:tzImagePickerVc action:@selector(cancelButtonClick)];
+    
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"取消" style:UIBarButtonItemStylePlain target:self action:@selector(closeAlbum)];
+    
+    
     _showTakePhotoBtn = (([[TZImageManager manager] isCameraRollAlbum:_model.name]) && tzImagePickerVc.allowTakePicture);
     // [self resetCachedAssets];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didChangeStatusBarOrientationNotification:) name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
@@ -142,7 +145,6 @@ CGFloat rowHeight = 70.0f;
         [self configAlbumTableView];
         
         [self scrollCollectionViewToBottom];
-        
         
     });
 }
@@ -300,6 +302,9 @@ CGFloat rowHeight = 70.0f;
     [_doneButton setTitleColor:tzImagePickerVc.oKButtonTitleColorDisabled forState:UIControlStateDisabled];
     _doneButton.enabled = tzImagePickerVc.selectedModels.count || tzImagePickerVc.alwaysEnableDoneBtn;
     
+    ///.
+    _doneButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
+    
     _numberImageView = [[UIImageView alloc] initWithImage:[UIImage imageNamedFromMyBundle:tzImagePickerVc.photoNumberIconImageName]];
     _numberImageView.hidden = tzImagePickerVc.selectedModels.count <= 0;
     _numberImageView.backgroundColor = [UIColor clearColor];
@@ -318,7 +323,12 @@ CGFloat rowHeight = 70.0f;
     
     [_bottomToolBar addSubview:_divideLine];
     [_bottomToolBar addSubview:_previewButton];
-    [_bottomToolBar addSubview:_doneButton];
+//    [_bottomToolBar addSubview:_doneButton];
+    
+    /// 修改完成按钮位置: signed by rain
+//    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:tzImagePickerVc.cancelBtnTitleStr style:UIBarButtonItemStylePlain target:tzImagePickerVc action:@selector(cancelButtonClick)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:_doneButton];
+    
     [_bottomToolBar addSubview:_numberImageView];
     [_bottomToolBar addSubview:_numberLabel];
     [self.view addSubview:_bottomToolBar];
@@ -375,7 +385,10 @@ CGFloat rowHeight = 70.0f;
         _originalPhotoButton.frame = CGRectMake(CGRectGetMaxX(_previewButton.frame), self.view.tz_height - 50, fullImageWidth + 56, 50);
         _originalPhotoLabel.frame = CGRectMake(fullImageWidth + 46, 0, 80, 50);
     }
-    _doneButton.frame = CGRectMake(self.view.tz_width - 44 - 12, 3, 44, 44);
+    
+    /// modified by rain
+//    _doneButton.frame = CGRectMake(self.view.tz_width - 44 - 12, 3, 44, 44);
+    _doneButton.frame = CGRectMake(self.view.tz_width - 88 - 12, 3, 88, 44);
     _numberImageView.frame = CGRectMake(self.view.tz_width - 56 - 28, 10, 30, 30);
     _numberLabel.frame = _numberImageView.frame;
     _divideLine.frame = CGRectMake(0, 0, self.view.tz_width, 1);
@@ -501,6 +514,10 @@ CGFloat rowHeight = 70.0f;
     [self.view layoutIfNeeded];
 }
 
+///< 直接关闭相册: signed by rain
+- (void)closeAlbum {
+    [self.navigationController dismissViewControllerAnimated:YES completion:nil];
+}
 
 
 #pragma mark - UICollectionViewDataSource && Delegate
@@ -736,6 +753,12 @@ CGFloat rowHeight = 70.0f;
     _numberImageView.hidden = tzImagePickerVc.selectedModels.count <= 0;
     _numberLabel.hidden = tzImagePickerVc.selectedModels.count <= 0;
     _numberLabel.text = [NSString stringWithFormat:@"%zd",tzImagePickerVc.selectedModels.count];
+    
+    /// self: signed by rain
+    [_doneButton setTitle:[NSString stringWithFormat:@"Done(%zd)", tzImagePickerVc.selectedModels.count] forState:UIControlStateNormal];
+    _numberLabel.hidden = YES;
+    _numberImageView.hidden = YES;
+    
     
     _originalPhotoButton.enabled = tzImagePickerVc.selectedModels.count > 0;
     _originalPhotoButton.selected = (_isSelectOriginalPhoto && _originalPhotoButton.enabled);
