@@ -17,7 +17,8 @@
 #import "TZGifPhotoPreviewController.h"
 #import "TZLocationManager.h"
 
-@interface TZPhotoPickerController ()<UICollectionViewDataSource,UICollectionViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UIAlertViewDelegate> {
+@interface TZPhotoPickerController ()<UICollectionViewDataSource,UICollectionViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UIAlertViewDelegate, UITableViewDelegate, UITableViewDataSource> {
+    
     NSMutableArray *_models;
     
     UIView *_bottomToolBar;
@@ -40,10 +41,18 @@
 @property (strong, nonatomic) UICollectionViewFlowLayout *layout;
 @property (nonatomic, strong) UIImagePickerController *imagePickerVc;
 @property (strong, nonatomic) CLLocation *location;
+
+
+/** 选择相册文件夹 */
+@property (strong, nonatomic) UITableView *albumTableView;
+
+@property (nonatomic, strong) NSMutableArray *albumArr;
+
 @end
 
 static CGSize AssetGridThumbnailSize;
 static CGFloat itemMargin = 5;
+CGFloat rowHeight = 70.0f;
 
 @implementation TZPhotoPickerController
 
@@ -72,11 +81,24 @@ static CGFloat itemMargin = 5;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
     TZImagePickerController *tzImagePickerVc = (TZImagePickerController *)self.navigationController;
     _isSelectOriginalPhoto = tzImagePickerVc.isSelectOriginalPhoto;
     _shouldScrollToBottom = YES;
     self.view.backgroundColor = [UIColor whiteColor];
-    self.navigationItem.title = _model.name;
+    
+    ///
+    
+    // 修改UI signed by rain
+    UIButton *titleBtn = [UIButton buttonWithType:UIButtonTypeContactAdd];
+    [titleBtn setTitle:_model.name forState:UIControlStateNormal];
+    [titleBtn addTarget:self action:@selector(albumSelectedBtnOnclick:) forControlEvents:UIControlEventTouchUpInside];
+    
+    self.navigationItem.titleView = titleBtn;
+    ///
+    
+    
+//    self.navigationItem.title = _model.name;
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:tzImagePickerVc.cancelBtnTitleStr style:UIBarButtonItemStylePlain target:tzImagePickerVc action:@selector(cancelButtonClick)];
     _showTakePhotoBtn = (([[TZImageManager manager] isCameraRollAlbum:_model.name]) && tzImagePickerVc.allowTakePicture);
     // [self resetCachedAssets];
@@ -117,8 +139,11 @@ static CGFloat itemMargin = 5;
         [self checkSelectedModels];
         [self configCollectionView];
         [self configBottomToolBar];
+        [self configAlbumTableView];
         
         [self scrollCollectionViewToBottom];
+        
+        
     });
 }
 
@@ -152,6 +177,59 @@ static CGFloat itemMargin = 5;
     [_collectionView registerClass:[TZAssetCell class] forCellWithReuseIdentifier:@"TZAssetCell"];
     [_collectionView registerClass:[TZAssetCameraCell class] forCellWithReuseIdentifier:@"TZAssetCameraCell"];
 }
+
+
+- (void)configAlbumTableView {
+
+    [self configTableView];
+//    UITableView *albumTableView = [[UITableView alloc] initWithFrame:CGRectMake(self.view.bounds.size.width * 0.25, 64, self.view.bounds.size.width * 0.5, self.view.bounds.size.height * 0.5) style:UITableViewStylePlain];
+//    [self.view addSubview:albumTableView];
+//    
+//    albumTableView.delegate = self;
+//    albumTableView.dataSource = self;
+//    albumTableView.rowHeight = 44.0f;
+//    albumTableView.hidden = YES;
+//    albumTableView.rowHeight = 70;
+//    albumTableView.tableFooterView = [[UIView alloc] init];
+//    [albumTableView registerClass:[TZAlbumCell class] forCellReuseIdentifier:@"TZAlbumCell"];
+//    albumTableView.backgroundColor = [UIColor whiteColor];
+//    
+//    self.albumTableView = albumTableView;
+}
+
+
+- (void)configTableView {
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        TZImagePickerController *imagePickerVc = (TZImagePickerController *)self.navigationController;
+        [[TZImageManager manager] getAllAlbums:imagePickerVc.allowPickingVideo allowPickingImage:imagePickerVc.allowPickingImage completion:^(NSArray<TZAlbumModel *> *models) {
+            _albumArr = [NSMutableArray arrayWithArray:models];
+            for (TZAlbumModel *albumModel in _albumArr) {
+                albumModel.selectedModels = imagePickerVc.selectedModels;
+            }
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (!_albumTableView) {
+//                    _albumTableView = [[UITableView alloc] initWithFrame:CGRectMake(self.view.bounds.size.width * 0.25, 64, self.view.bounds.size.width * 0.5, rowHeight * _albumArr.count) style:UITableViewStylePlain];
+                    _albumTableView = [[UITableView alloc] initWithFrame:CGRectMake(self.view.bounds.size.width * 0.25, 64, self.view.bounds.size.width * 0.5, 0) style:UITableViewStylePlain];
+                    _albumTableView.rowHeight = rowHeight;
+                    _albumTableView.tableFooterView = [[UIView alloc] init];
+                    _albumTableView.dataSource = self;
+                    _albumTableView.delegate = self;
+//                    _albumTableView.hidden = YES;
+                    _albumTableView.layer.borderColor = [UIColor grayColor].CGColor;
+                    _albumTableView.layer.borderWidth = 1.0f;
+                    
+                    [_albumTableView registerClass:[TZAlbumCell class] forCellReuseIdentifier:@"TZAlbumCell"];
+                    [self.view addSubview:_albumTableView];
+                } else {
+                    [_albumTableView reloadData];
+                }
+            });
+        }];
+    });
+}
+
+
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
@@ -408,6 +486,23 @@ static CGFloat itemMargin = 5;
     }
 }
 
+
+
+/// 选择相册集
+
+- (void)albumSelectedBtnOnclick:(UIButton *)button {
+//    self.albumTableView.hidden = !self.albumTableView.hidden;
+    
+    [UIView animateWithDuration:0.25f animations:^{
+        CGRect frame = self.albumTableView.frame;
+        frame.size.height = (frame.size.height == 0) ? _albumArr.count * rowHeight : 0;
+        self.albumTableView.frame = frame;
+    }];
+    [self.view layoutIfNeeded];
+}
+
+
+
 #pragma mark - UICollectionViewDataSource && Delegate
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
@@ -517,6 +612,60 @@ static CGFloat itemMargin = 5;
         [self pushPhotoPrevireViewController:photoPreviewVc];
     }
 }
+
+
+
+#pragma mark - UITableViewDataSource && UITableViewDelegate
+
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return _albumArr.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    // 这里新建一个新的样式的Cell: signed by rain
+    TZAlbumCell *cell = [tableView dequeueReusableCellWithIdentifier:@"TZAlbumCell"];
+    TZImagePickerController *imagePickerVc = (TZImagePickerController *)self.navigationController;
+    
+    
+    /// 应当防止重用: signed by rain
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.selectedCountButton.backgroundColor = imagePickerVc.oKButtonTitleColorNormal;
+    cell.model = _albumArr[indexPath.row];
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    return cell;
+}
+
+
+// 选取相册 signed by rain
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    // 选择相册
+    TZAlbumModel *model = _albumArr[indexPath.row];
+    NSLog(@"%@", model.name);
+    
+    [UIView animateWithDuration:0.1 animations:^{
+        self.albumTableView.alpha = 0;
+    } completion:^(BOOL finished) {
+        CGRect frame = self.albumTableView.frame;
+        frame.size.height = 0;
+        self.albumTableView.frame = frame;
+        self.albumTableView.alpha = 1;
+    }];
+    
+    return;
+    
+    TZPhotoPickerController *photoPickerVc = [[TZPhotoPickerController alloc] init];
+    photoPickerVc.columnNumber = self.columnNumber;
+//    TZAlbumModel *model = _albumArr[indexPath.row];
+    photoPickerVc.model = model;
+    [self.navigationController pushViewController:photoPickerVc animated:YES];
+    [tableView deselectRowAtIndexPath:indexPath animated:NO];
+}
+
+
+
 
 #pragma mark - UIScrollViewDelegate
 

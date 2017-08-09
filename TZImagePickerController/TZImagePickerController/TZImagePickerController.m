@@ -601,6 +601,8 @@
     [self configTableView];
 }
 
+
+// 获取相册集  signed by rain
 - (void)configTableView {
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         TZImagePickerController *imagePickerVc = (TZImagePickerController *)self.navigationController;
@@ -665,6 +667,8 @@
     return cell;
 }
 
+
+// 选取相册 signed by rain
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     TZPhotoPickerController *photoPickerVc = [[TZPhotoPickerController alloc] init];
     photoPickerVc.columnNumber = self.columnNumber;

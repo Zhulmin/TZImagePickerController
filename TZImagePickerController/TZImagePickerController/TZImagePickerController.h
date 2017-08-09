@@ -217,7 +217,7 @@
 - (BOOL)isAssetCanSelect:(id)asset;
 @end
 
-
+// 相册集控制器  signed by rain
 @interface TZAlbumPickerController : UIViewController
 @property (nonatomic, assign) NSInteger columnNumber;
 - (void)configTableView;
